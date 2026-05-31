@@ -1,0 +1,123 @@
+# GitHub Actions workflow to build and deploy to Tencent Cloud SCF
+name: Deploy to Tencent Cloud SCF
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with esbuild in development mode
+        run: NODE_ENV=development npm run build:esbuild
+
+      - name: Verify build output
+        run: |
+          ls -la dist/
+          test -f dist/index.cjs && echo "Build successful" || (echo "Build failed - no index.cjs found" && exit 1)
+
+      - name: Zip dist folder
+        run: |
+          cd dist
+          zip -r ../function.zip .
+          cd ..
+          ls -la function.zip
+          echo "Zip file size: $(du -h function.zip)"
+
+      - name: Install tencentcloud-sdk-python
+        run: pip3 install tencentcloud-sdk-python
+
+      - name: Deploy to Tencent Cloud SCF
+        run: |
+          python3 << 'EOF'
+          import os
+          import base64
+          import json
+          import sys
+          from tencentcloud.common import credential
+          from tencentcloud.common.profile.client_profile import ClientProfile
+          from tencentcloud.common.profile.http_profile import HttpProfile
+          from tencentcloud.scf.v20180416 import scf_client, models
+
+          # Get environment variables
+          secret_id = os.environ.get('TENCENT_SECRET_ID')
+          secret_key = os.environ.get('TENCENT_SECRET_KEY')
+          region = os.environ.get('TENCENT_REGION', 'ap-hongkong')
+          function_name = os.environ.get('SCF_FUNCTION_NAME')
+
+          if not secret_id or not secret_key:
+              print("Error: Missing required environment variables TENCENT_SECRET_ID or TENCENT_SECRET_KEY")
+              sys.exit(1)
+
+          try:
+              # Create credential
+              cred = credential.Credential(secret_id, secret_key)
+              
+              # Create client profile
+              httpProfile = HttpProfile()
+              httpProfile.endpoint = "scf.tencentcloudapi.com"
+              
+              clientProfile = ClientProfile()
+              clientProfile.httpProfile = httpProfile
+              client = scf_client.ScfClient(cred, region, clientProfile)
+              
+              # Read zip file and encode to base64
+              with open('./function.zip', 'rb') as f:
+                  zip_content = f.read()
+              encoded_zip = base64.b64encode(zip_content).decode('utf-8')
+              
+              # Validate zip file size (SCF has 50MB limit)
+              if len(encoded_zip) > 50 * 1024 * 1024:
+                  print(f"Error: Zip file exceeds 50MB limit ({len(encoded_zip)} bytes after encoding)")
+                  sys.exit(1)
+              
+              # Create request
+              req = models.UpdateFunctionCodeRequest()
+              params = {
+                  "FunctionName": function_name,
+                  "ZipFile": encoded_zip
+              }
+              req.from_json_string(json.dumps(params))
+              
+              # Execute request
+              resp = client.UpdateFunctionCode(req)
+              print("Successfully updated function code:")
+              print(resp.to_json_string())
+              
+          except Exception as e:
+              print(f"Error deploying to SCF: {str(e)}")
+              sys.exit(1)
+          EOF
+        env:
+          TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
+          TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+          TENCENT_REGION: ${{ vars.TENCENT_REGION }}
+          SCF_FUNCTION_NAME: ${{ vars.SCF_FUNCTION_NAME }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f function.zip
