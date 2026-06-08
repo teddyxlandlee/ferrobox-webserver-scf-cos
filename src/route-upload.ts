@@ -2,7 +2,7 @@ import {Hono} from "hono";
 import {CONTEXT_TOKEN_IDENTITY, EnvWithTokenIdentity, verifier} from "./access-token.js";
 import {ObjectStorage} from "./storage/object-storage.js";
 import {TencentCosObjectStorage} from "./storage/tencent-cos-impl.js";
-import {dataCosCredentials, metaCosCredentials} from "./cos-credentials.js";
+import {dataOssCredentials, metaOssCredentials} from "./oss-credentials.js";
 
 const uploadRoute = new Hono<EnvWithTokenIdentity & {
     Variables: {
@@ -24,19 +24,19 @@ uploadRoute.post('*', verifier, async (c, next) => {
 // Respond a JSON that contains "url" (pre-signed)
 
 uploadRoute.post('/meta', async (c) => {
-    if (!metaCosCredentials) return c.text('Meta storage not supported', 500)
+    if (!metaOssCredentials) return c.text('Meta storage not supported', 500)
 
     const slug = c.get("slug")
-    const objectStorage: ObjectStorage = new TencentCosObjectStorage(metaCosCredentials)
+    const objectStorage: ObjectStorage = new TencentCosObjectStorage(metaOssCredentials)
     const url = await objectStorage.acquirePutUrl(`${slug}.json`)
     return c.json({url})
 })
 
 uploadRoute.post('/data', async (c) => {
-    if (!dataCosCredentials) return c.text('Data storage not supported', 500)
+    if (!dataOssCredentials) return c.text('Data storage not supported', 500)
 
     const slug = c.get("slug")
-    const objectStorage: ObjectStorage = new TencentCosObjectStorage(dataCosCredentials)
+    const objectStorage: ObjectStorage = new TencentCosObjectStorage(dataOssCredentials)
     const url = await objectStorage.acquirePutUrl(`${slug}.json`)
     return c.json({url})
 })

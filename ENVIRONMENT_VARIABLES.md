@@ -12,8 +12,8 @@
 - Root certificate
 - Format: PEM
 
-## `COS_{META,DATA}_{BUCKET,REGION,ACCESS_ID,ACCESS_KEY}`
-- Tencent COS entrypoints & credentials
+## `OSS_{META,DATA}_{BUCKET,REGION,ACCESS_ID,ACCESS_KEY}`
+- Aliyun OSS entrypoints & credentials
 - Format: plaintext
 
 ## `PORT`

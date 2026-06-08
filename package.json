@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "devDependencies": {
+    "@types/ali-oss": "^6.23.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.41",
     "esbuild": "^0.28.0",
@@ -18,7 +19,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.4",
-    "cos-nodejs-sdk-v5": "^2.11.19",
+    "ali-oss": "^6.23.0",
     "hono": "^4.12.23",
     "jsonwebtoken": "^9.0.3",
     "uuidv7-js": "^2.0.0"
