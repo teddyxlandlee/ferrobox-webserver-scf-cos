@@ -25,7 +25,7 @@ assert(JWT_AUTH_CHALLENGE.length > 0, 'JWT_AUTH_CHALLENGE is empty')
 type RootCA = crypto.X509Certificate
 
 const ROOT_CA_PEM = process.env.ROOT_CA_PEM ?? ''
-assert(ROOT_CA_PEM !== '', 'ROOT_CA_PEM is empty')
+assert(!!ROOT_CA_PEM, 'ROOT_CA_PEM is empty')
 
 const rootCA: RootCA = new crypto.X509Certificate(ROOT_CA_PEM)
 
@@ -166,11 +166,7 @@ function verifyWebAuthnSignature(
     }
 
     // The challenge in clientDataJSON is base64url-encoded (standard WebAuthn)
-    const expectedChallenge = challengeHash
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '')
+    const expectedChallenge = challengeHash.toString('base64url')
     if (clientData.challenge !== expectedChallenge) {
         return false
     }

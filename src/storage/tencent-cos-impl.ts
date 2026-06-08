@@ -24,7 +24,7 @@ export class TencentCosObjectStorage extends AbstractObjectStorage {
 
     override acquireDeleteUrl = (key: string) => this.acquireObjectUrl(key, 'DELETE')
 
-    private cos: COS
+    private readonly cos: COS
 
     constructor(credentials: ObjectStorageCredentials) {
         super(credentials);

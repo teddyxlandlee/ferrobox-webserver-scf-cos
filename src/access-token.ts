@@ -5,7 +5,7 @@ import {MiddlewareHandler} from 'hono'
 
 // NOTE: distinguish with JWT_AUTH_CHALLENGE
 const JWT_ACCESS_TOKEN = Buffer.from(process.env.JWT_ACCESS_TOKEN || '', 'base64')
-assert(!!JWT_ACCESS_TOKEN, 'JWT_ACCESS_TOKEN is empty')
+assert(JWT_ACCESS_TOKEN.length > 0, 'JWT_ACCESS_TOKEN is empty')
 
 const SCOPES = [
     'upload', 'delete'
