@@ -19,6 +19,8 @@ await build({
     external: [
         // Add any external dependencies that shouldn't be bundled
         // These are typically native modules or packages that cause issues when bundled
+        'cos-nodejs-sdk-v5',    // obsolete
+        'proxy-agent',          // lazily-required by urllib, a dependency of ali-oss
     ],
 }).catch(() => process.exit(1));
 

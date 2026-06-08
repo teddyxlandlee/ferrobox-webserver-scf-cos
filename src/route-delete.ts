@@ -1,7 +1,7 @@
 import {Hono} from "hono";
 import {CONTEXT_TOKEN_IDENTITY, EnvWithTokenIdentity, verifier} from "./access-token.js";
 import {ObjectStorage} from "./storage/object-storage.js";
-import {TencentCosObjectStorage} from "./storage/tencent-cos-impl.js";
+import {AliyunOssObjectStorage} from "./storage/aliyun-oss-impl.js";
 import {dataOssCredentials, metaOssCredentials} from "./oss-credentials.js";
 
 const deleteRoute = new Hono<EnvWithTokenIdentity & {
@@ -27,7 +27,7 @@ deleteRoute.post('/meta', async (c) => {
     if (!metaOssCredentials) return c.text('Meta storage not supported', 500)
 
     const slug = c.get("slug")
-    const objectStorage: ObjectStorage = new TencentCosObjectStorage(metaOssCredentials)
+    const objectStorage: ObjectStorage = new AliyunOssObjectStorage(metaOssCredentials)
     const url = await objectStorage.acquireDeleteUrl(`${slug}.json`)
     return c.json({url})
 })
@@ -36,7 +36,7 @@ deleteRoute.post('/data', async (c) => {
     if (!dataOssCredentials) return c.text('Data storage not supported', 500)
 
     const slug = c.get("slug")
-    const objectStorage: ObjectStorage = new TencentCosObjectStorage(dataOssCredentials)
+    const objectStorage: ObjectStorage = new AliyunOssObjectStorage(dataOssCredentials)
     const url = await objectStorage.acquireDeleteUrl(`${slug}.json`)
     return c.json({url})
 })
