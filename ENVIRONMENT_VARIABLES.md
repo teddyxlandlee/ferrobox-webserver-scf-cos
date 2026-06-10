@@ -21,3 +21,8 @@
 - Format: number
 - Default: 9000
 
+## `CORS_ALLOW_LIST`
+- Allowed origins (hostnames) of CORS requests. Only HTTPS requests are accepted.
+- Format: plaintext, separated by comma (`,`)
+- Example: `example.org,*.example.com`
+

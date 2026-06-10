@@ -24,10 +24,10 @@ assert(JWT_AUTH_CHALLENGE.length > 0, 'JWT_AUTH_CHALLENGE is empty')
 
 type RootCA = crypto.X509Certificate
 
-const ROOT_CA_PEM = process.env.ROOT_CA_PEM ?? ''
-assert(!!ROOT_CA_PEM, 'ROOT_CA_PEM is empty')
+const ROOT_CA_DER = Buffer.from(process.env.ROOT_CA_DER ?? '', 'base64')
+assert(ROOT_CA_DER.length > 0, 'ROOT_CA_DER is empty')
 
-const rootCA: RootCA = new crypto.X509Certificate(ROOT_CA_PEM)
+const rootCA: RootCA = new crypto.X509Certificate(ROOT_CA_DER)
 
 function signChallenge(payload: ChallengePayload): string {
     return jwt.sign(payload, JWT_AUTH_CHALLENGE, {
