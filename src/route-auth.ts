@@ -135,24 +135,31 @@ function reconstructSignedString(payload: ChallengePayload): string {
     ].join('\n')
 }
 
-function verifyWebCryptoSignature(
+async function verifyWebCryptoSignature(
     signedString: string,
     signatureBase64: string,
     publicKeySpkiDer: Buffer,
-): boolean {
-    const verify = crypto.createVerify('ed25519')
-    verify.update(Buffer.from(signedString, 'utf-8'))
-    return verify.verify(
-        { key: publicKeySpkiDer, format: 'der', type: 'spki' },
+): Promise<boolean> {
+    const publicKey = await crypto.subtle.importKey(
+        'spki',
+        publicKeySpkiDer,
+        { name: 'Ed25519' },
+        false,
+        ['verify'],
+    )
+    return crypto.subtle.verify(
+        'Ed25519',
+        publicKey,
         Buffer.from(signatureBase64, 'base64'),
+        Buffer.from(signedString, 'utf-8'),
     )
 }
 
-function verifyWebAuthnSignature(
+async function verifyWebAuthnSignature(
     signedString: string,
     result: WebAuthnSignResult,
     publicKeySpkiDer: Buffer,
-): boolean {
+): Promise<boolean> {
     // 1. Compute challenge hash used by client
     const challengeHash = crypto.createHash('sha256').update(Buffer.from(signedString, 'utf-8')).digest()
 
@@ -178,11 +185,18 @@ function verifyWebAuthnSignature(
 
     // 4. Verify signature (should be a COSE_Signature1 / Ed25519 or ES256)
     const signature = Buffer.from(result.signature, 'base64')
-    const verify = crypto.createVerify('ed25519')
-    verify.update(signedData)
-    return verify.verify(
-        { key: publicKeySpkiDer, format: 'der', type: 'spki' },
+    const publicKey = await crypto.subtle.importKey(
+        'spki',
+        publicKeySpkiDer,
+        { name: 'Ed25519' },
+        false,
+        ['verify'],
+    )
+    return crypto.subtle.verify(
+        'Ed25519',
+        publicKey,
         signature,
+        signedData,
     )
 }
 
@@ -192,7 +206,7 @@ type VerificationResult = |
     { ok: true, payload: ChallengePayload, userId?: string } |
     { ok: false, message: string, status: 401 | 400 }
 
-function verifyChallengeResponse(body: ChallengeResponse, rootCA: RootCA): VerificationResult {
+async function verifyChallengeResponse(body: ChallengeResponse, rootCA: RootCA): Promise<VerificationResult> {
     if (typeof body.payload !== 'string') return { ok: false, message: 'Missing or invalid payload', status: 400 }
 
     const sr = body.signResult
@@ -219,14 +233,14 @@ function verifyChallengeResponse(body: ChallengeResponse, rootCA: RootCA): Verif
     let valid: boolean
     if (sr.type === 'webcrypto') {
         if (typeof sr.signature !== 'string') return { ok: false, message: 'Missing webcrypto signature', status: 400 }
-        valid = verifyWebCryptoSignature(signedString, sr.signature, publicKeySpkiDer)
+        valid = await verifyWebCryptoSignature(signedString, sr.signature, publicKeySpkiDer)
     } else {
         // webauthn
         if (typeof sr.credentialId !== 'string') return { ok: false, message: 'Missing credentialId', status: 400 }
         if (typeof sr.clientDataJSON !== 'string') return { ok: false, message: 'Missing clientDataJSON', status: 400 }
         if (typeof sr.authenticatorData !== 'string') return { ok: false, message: 'Missing authenticatorData', status: 400 }
         if (typeof sr.signature !== 'string') return { ok: false, message: 'Missing signature', status: 400 }
-        valid = verifyWebAuthnSignature(signedString, sr, publicKeySpkiDer)
+        valid = await verifyWebAuthnSignature(signedString, sr, publicKeySpkiDer)
     }
 
     if (!valid) {
@@ -239,7 +253,7 @@ function verifyChallengeResponse(body: ChallengeResponse, rootCA: RootCA): Verif
 authRoute.post('/', async (c) => {
     // complete auth challenge, acquire access token
     const body: ChallengeResponse = await c.req.json()
-    const response = verifyChallengeResponse(body, rootCA);
+    const response = await verifyChallengeResponse(body, rootCA);
     if (!response.ok) {
         return new Response(response.message, { status: response.status })
     }
