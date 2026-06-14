@@ -24,9 +24,12 @@ await build({
     ],
 }).catch(() => process.exit(1));
 
+const sourceMapFlag = isDev ? 'export NODE_OPTIONS="--enable-source-maps"' : '';
+
 fs.writeFileSync(
     "./dist/scf_bootstrap",
     `#!/usr/bin/env bash
+${sourceMapFlag}
 /var/lang/node20/bin/node ./index.cjs "$@"
 `,
 );
