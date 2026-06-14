@@ -18,10 +18,15 @@ export class AliyunOssObjectStorage extends AbstractObjectStorage {
         })
     }
 
-    private signUrl(key: string, method: 'PUT' | 'DELETE'): Promise<string> {
-        return this.oss.signatureUrlV4(method, WINDOW_SECONDS, {}, key)
+    private signUrl(key: string, method: 'PUT' | 'DELETE', contentType?: string): Promise<string> {
+        // Note: empty is treated like undefined
+        const request = contentType ? {
+            headers: { 'content-type': contentType }
+        } : {}
+
+        return this.oss.signatureUrlV4(method, WINDOW_SECONDS, request, key, contentType ? ['content-type'] : [])
     }
 
-    acquirePutUrl = (key: string) => this.signUrl(key, 'PUT')
+    acquirePutUrl = (key: string, contentType?: string) => this.signUrl(key, 'PUT', contentType)
     acquireDeleteUrl = (key: string) => this.signUrl(key, 'DELETE')
 }

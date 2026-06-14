@@ -28,7 +28,7 @@ uploadRoute.post('/meta', async (c) => {
 
     const slug = c.get("slug")
     const objectStorage: ObjectStorage = new AliyunOssObjectStorage(metaOssCredentials)
-    const url = await objectStorage.acquirePutUrl(`${slug}.json`)
+    const url = await objectStorage.acquirePutUrl(`${slug}.json`, 'application/json')
     return c.json({url})
 })
 
@@ -37,7 +37,7 @@ uploadRoute.post('/data', async (c) => {
 
     const slug = c.get("slug")
     const objectStorage: ObjectStorage = new AliyunOssObjectStorage(dataOssCredentials)
-    const url = await objectStorage.acquirePutUrl(`${slug}.bin`)
+    const url = await objectStorage.acquirePutUrl(`${slug}.bin`, 'application/octet-stream')
     return c.json({url})
 })
 

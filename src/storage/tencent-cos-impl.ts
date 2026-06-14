@@ -38,7 +38,7 @@ export class TencentCosObjectStorage extends AbstractObjectStorage {
         })
     }
 
-    override acquirePutUrl = (key: string) => this.acquireObjectUrl(key, 'PUT')
+    override acquirePutUrl = (key: string, _contentType?: string) => this.acquireObjectUrl(key, 'PUT')
 
     override acquireDeleteUrl = (key: string) => this.acquireObjectUrl(key, 'DELETE')
 
