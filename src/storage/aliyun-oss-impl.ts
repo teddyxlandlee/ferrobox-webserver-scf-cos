@@ -13,6 +13,8 @@ export class AliyunOssObjectStorage extends AbstractObjectStorage {
             accessKeyId: credentials.accessId,
             accessKeySecret: credentials.accessKey,
             bucket: credentials.bucket,
+            secure: true,
+            authorizationV4: true,
         })
     }
 
