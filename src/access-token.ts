@@ -26,11 +26,14 @@ export function newAccessToken(payload: TokenIdentity): string {
     const realPayload: RealPayload = {
         scopes: Array.from(payload.scopes).sort()
     }
-    return jwt.sign(realPayload, JWT_ACCESS_TOKEN, {
+    const signOptions: jwt.SignOptions = {
         expiresIn: EXPIRE_IN,
-        keyid: 'access',
-        subject: payload.userId,
-    })
+        keyid: 'access'
+    }
+    if (typeof payload.userId === 'string') {
+        signOptions.subject = payload.userId
+    }
+    return jwt.sign(realPayload, JWT_ACCESS_TOKEN, signOptions)
 }
 
 export function verifyAccessToken(token: string): null | TokenIdentity {
