@@ -39,10 +39,9 @@ export function newAccessToken(payload: TokenIdentity): string {
 export function verifyAccessToken(token: string): null | TokenIdentity {
     try {
         const payload = jwt.verify(token, JWT_ACCESS_TOKEN) as string | (RealPayload & jwt.JwtPayload)
-        console.log('[PAYLOAD]', JSON.stringify(payload))
         if (typeof payload === 'string') return null    // invalid
         const scopes = payload.scopes
-        if (!Array.isArray(scopes) || !scopes.every(SCOPES.includes)) return null    // invalid scope
+        if (!Array.isArray(scopes) || !scopes.every(x => SCOPES.includes(x))) return null    // invalid scope
         return {
             scopes,
             userId: payload.sub,
