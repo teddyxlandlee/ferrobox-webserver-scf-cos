@@ -124,7 +124,12 @@ async function getBlackList(): Promise<Set<string>> {
             region: BLACKLIST_COS_REGION,
         })
         const url = await storage.acquireGetUrl(BLACKLIST_COS_FILENAME)
-        const responseText = await fetch(url).then(r => r.text())
+        const response = await fetch(url)
+        if (!response.ok) {
+            console.error('Blacklist fetching returned ' + response.status)
+            return blacklistCache || new Set()
+        }
+        const responseText = await response.text()
         blacklistCache = new Set(
             responseText.split(/\r\n|\r|\n/)
                 .map(s => s.trim().toLowerCase())
