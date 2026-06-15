@@ -37,7 +37,7 @@ deleteRoute.post('/data', async (c) => {
 
     const slug = c.get("slug")
     const objectStorage: ObjectStorage = new AliyunOssObjectStorage(dataOssCredentials)
-    const url = await objectStorage.acquireDeleteUrl(`${slug}.json`)
+    const url = await objectStorage.acquireDeleteUrl(`${slug}.bin`)
     return c.json({url})
 })
 
