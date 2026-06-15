@@ -5,6 +5,7 @@ import {assert} from "./assert.js";
 import * as jwt from 'jsonwebtoken'
 import * as crypto from 'node:crypto'
 import {Buffer} from 'node:buffer'
+import { TencentCosObjectStorage } from "./storage/tencent-cos-impl.js";
 
 const authRoute = new Hono({
     strict: false
@@ -97,11 +98,48 @@ interface ChallengeResponse {
     signResult: SignResult
 }
 
+// ─── Certificate blacklist ───────────────────────────────────────────────
+
+const {
+    BLACKLIST_COS_REGION,
+    BLACKLIST_COS_BUCKET,
+    BLACKLIST_COS_ACCESS_ID,
+    BLACKLIST_COS_ACCESS_KEY,
+    BLACKLIST_COS_FILENAME,
+} = process.env
+// Hex strings here, all lowercase
+let blacklistCache: Set<string> | null = null
+const BLACKLIST_TTL: number = 30 * 60 * 1000    // 30min
+let blacklistUpdateTime: number = 0
+
+async function getBlackList(): Promise<Set<string>> {
+    if (blacklistCache === null || Date.now() - blacklistUpdateTime > BLACKLIST_TTL) {
+        if (!BLACKLIST_COS_REGION || !BLACKLIST_COS_BUCKET || !BLACKLIST_COS_ACCESS_ID || !BLACKLIST_COS_ACCESS_KEY || !BLACKLIST_COS_FILENAME) {
+            throw new Error('Credentials not available for blacklist')
+        }
+        const storage = new TencentCosObjectStorage({
+            accessId: BLACKLIST_COS_ACCESS_ID,
+            accessKey: BLACKLIST_COS_ACCESS_KEY,
+            bucket: BLACKLIST_COS_BUCKET,
+            region: BLACKLIST_COS_REGION,
+        })
+        const url = await storage.acquireGetUrl(BLACKLIST_COS_FILENAME)
+        const responseText = await fetch(url).then(r => r.text())
+        blacklistCache = new Set(
+            responseText.split(/\r\n|\r|\n/)
+                .map(s => s.trim().toLowerCase())
+                .filter(s => s && !s.startsWith('#'))
+        )
+        blacklistUpdateTime = Date.now()
+    }
+    return blacklistCache
+}
+
 // ─── Certificate chain verification ──────────────────────────────────────
 
 /** Verify a certificate chain against the trusted root CA.
  *  Returns the public key (SPKI DER) of the leaf certificate on success. */
-function verifyCertChain(certs: string[], rootCA: RootCA): Buffer {
+async function verifyCertChain(certs: string[], rootCA: RootCA): Promise<Buffer> {
     if (certs.length === 0) throw new Error('Empty certificate chain')
 
     const x509Certs = certs.map(pem => new crypto.X509Certificate(pem))
@@ -118,6 +156,14 @@ function verifyCertChain(certs: string[], rootCA: RootCA): Buffer {
     const last = x509Certs[x509Certs.length - 1]
     if (!last.verify(rootCA.publicKey)) {
         throw new Error('Root certificate verification failed')
+    }
+
+    // Verify blacklist
+    const blacklist = await getBlackList()
+    for (let i = 0; i < x509Certs.length; i++) {
+        if (blacklist.has(x509Certs[i].fingerprint256.toLowerCase())) {
+            throw new Error(`Certificate #${i} is blacklisted`)
+        }
     }
 
     return x509Certs[0].publicKey.export({ type: 'spki', format: 'der' })
@@ -224,7 +270,7 @@ async function verifyChallengeResponse(body: ChallengeResponse, rootCA: RootCA):
     // verify certificate chain and extract leaf public key
     let publicKeySpkiDer: Buffer
     try {
-        publicKeySpkiDer = verifyCertChain(sr.certs, rootCA)
+        publicKeySpkiDer = await verifyCertChain(sr.certs, rootCA)
     } catch (err: any) {
         return { ok: false, message: `Certificate verification failed: ${err.message}`, status: 401 }
     }

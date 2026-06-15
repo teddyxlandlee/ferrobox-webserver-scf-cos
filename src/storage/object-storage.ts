@@ -1,3 +1,5 @@
+export const WINDOW_SECONDS = 60
+
 export interface ObjectStorage {
     acquirePutUrl(key: string, contentType?: string): Promise<string>
     acquireDeleteUrl(key: string): Promise<string>

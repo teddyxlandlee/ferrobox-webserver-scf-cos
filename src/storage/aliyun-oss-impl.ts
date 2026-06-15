@@ -1,7 +1,5 @@
-import { AbstractObjectStorage, ObjectStorageCredentials } from "./object-storage.js";
+import { AbstractObjectStorage, ObjectStorageCredentials, WINDOW_SECONDS } from "./object-storage.js";
 import OSS from 'ali-oss';
-
-const WINDOW_SECONDS = 60
 
 export class AliyunOssObjectStorage extends AbstractObjectStorage {
     private readonly oss: OSS
